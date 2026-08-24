@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<title>DM Corporate Console — McKinley Drive Property</title>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+  --dm-crimson: #8b0000;
+  --dm-crimson-light: #b30000;
+  --dm-chrome: #d9d9d9;
+  --dm-dark: #1a1a1a;
+  --dm-glass: rgba(255,255,255,0.08);
+  --dm-text: #f2f2f2;
+  --dm-accent: #c0c0c0;
+  --dm-shadow: rgba(0,0,0,0.45);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(180deg, #0f0f0f, #1c1c1c);
+  font-family: "Segoe UI", Inter, sans-serif;
+  color: var(--dm-text);
+}
+
+/* DM Header */
+#dmHeader {
+  background: linear-gradient(90deg, var(--dm-crimson), var(--dm-crimson-light));
+  padding: 22px 30px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: white;
+  border-bottom: 3px solid var(--dm-chrome);
+  position: relative;
+}
+
+#dmHeader::after {
+  content: "DM";
+  position: absolute;
+  right: 30px;
+  top: 10px;
+  font-size: 4rem;
+  font-weight: 900;
+  opacity: 0.15;
+  color: var(--dm-chrome);
+}
+
+/* DM Cards */
+.dmCard {
+  background: var(--dm-glass);
+  border: 1px solid var(--dm-accent);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 25px;
+  box-shadow: 0 4px 12px var(--dm-shadow);
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.dmCard::after {
+  content: "DM";
+  position: absolute;
+  bottom: 10px;
+  right: 20px;
+  font-size: 2.8rem;
+  font-weight: 900;
+  opacity: 0.08;
+  color: var(--dm-chrome);
+}
+
+/* Titles */
+.dmCard h2 {
+  margin-top: 0;
+  color: var(--dm-chrome);
+  border-left: 6px solid var(--dm-crimson);
+  padding-left: 12px;
+  font-size: 1.4rem;
+}
+
+/* Inputs */
+input, select {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid var(--dm-accent);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--dm-text);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--dm-crimson-light);
+  box-shadow: 0 0 6px var(--dm-crimson-light);
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+th {
+  background: rgba(255,255,255,0.12);
+  border-bottom: 2px solid var(--dm-crimson);
+  padding: 8px;
+  color: var(--dm-chrome);
+}
+
+td {
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  padding: 6px;
+}
+
+/* Buttons */
+button {
+  background: var(--dm-crimson);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: var(--dm-crimson-light);
+}
+
+.deleteBtn {
+  background: #444;
+}
+
+.deleteBtn:hover {
+  background: #666;
+}
+
+/* Totals */
+.totals {
+  margin-top: 12px;
+  font-weight: 700;
+  color: var(--dm-chrome);
+  font-size: 1.1rem;
+}
+
+/* Flex */
+.flex {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.flex > div {
+  flex: 1 1 200px;
+}
+</style>
+</head>
+<script>
+/* ======= Utility helpers ======= */
+function toNumber(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+function safeQuery(selector) {
+  try { return document.querySelector(selector); } catch (e) { return null; }
+}
+
+/* ======= Totals / cost table logic ======= */
+function recalcTotals() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+  let m = 0, l = 0, d = 0;
+  rows.forEach(r => {
+    // guard against missing cells
+    const matCell = r.cells[3] && r.cells[3].querySelector("input");
+    const labCell = r.cells[5] && r.cells[5].querySelector("input");
+    const depCell = r.cells[6] && r.cells[6].querySelector("input");
+    m += toNumber(matCell ? matCell.value : 0);
+    l += toNumber(labCell ? labCell.value : 0);
+    d += toNumber(depCell ? depCell.value : 0);
+  });
+
+  const totalMaterials = document.getElementById("totalMaterials");
+  const totalLabour = document.getElementById("totalLabour");
+  const totalDeposits = document.getElementById("totalDeposits");
+  if (totalMaterials) totalMaterials.textContent = m.toFixed(2);
+  if (totalLabour) totalLabour.textContent = l.toFixed(2);
+  if (totalDeposits) totalDeposits.textContent = d.toFixed(2);
+}
+
+/* ======= Add / delete rows ======= */
+function addCostRow() {
+  const tbody = document.querySelector("#costsTable tbody");
+  if (!tbody) return;
+
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="date"></td>
+    <td><input type="text"></td>
+    <td><input type="text"></td>
+    <td><input type="number" value="0" step="0.01"></td>
+    <td><input type="text"></td>
+    <td><input type="number" value="0" step="0.01"></td>
+    <td><input type="number" value="0" step="0.01"></td>
+    <td><input type="text"></td>
+    <td><input type="text"></td>
+    <td><input type="text"></td>
+    <td><button class="deleteBtn" type="button">🗑</button></td>
+  `;
+  tbody.appendChild(tr);
+
+  // wire inputs to recalc and charts
+  tr.querySelectorAll("input").forEach(i => {
+    i.addEventListener("input", recalcTotals);
+    i.addEventListener("input", generateDMCharts);
+  });
+
+  // wire delete button
+  const del = tr.querySelector(".deleteBtn");
+  if (del) del.addEventListener("click", () => {
+    tr.remove();
+    recalcTotals();
+    generateDMCharts();
+  });
+
+  recalcTotals();
+  generateDMCharts();
+}
+
+function deleteRow(btn) {
+  const tr = btn && btn.closest && btn.closest("tr");
+  if (tr) tr.remove();
+  recalcTotals();
+  generateDMCharts();
+}
+
+/* ======= Initial wiring for existing rows (safe guards) ======= */
+function wireExistingRows() {
+  const inputs = document.querySelectorAll("#costsTable tbody tr input");
+  inputs.forEach(i => {
+    i.removeEventListener("input", recalcTotals);
+    i.removeEventListener("input", generateDMCharts);
+    i.addEventListener("input", recalcTotals);
+    i.addEventListener("input", generateDMCharts);
+  });
+
+  // wire delete buttons already present
+  document.querySelectorAll("#costsTable tbody .deleteBtn").forEach(btn => {
+    btn.removeEventListener("click", deleteRow);
+    btn.addEventListener("click", function () { deleteRow(this); });
+  });
+}
+
+/* ======= Misc totals ======= */
+function recalcMisc() {
+  let total = 0;
+  for (let i = 1; i <= 9; i++) {
+    const el = document.getElementById("misc" + i);
+    if (el) total += toNumber(el.value);
+  }
+  const out = document.getElementById("miscTotal");
+  if (out) out.textContent = total.toFixed(2);
+}
+
+/* wire misc inputs safely */
+function wireMisc() {
+  for (let i = 1; i <= 9; i++) {
+    const el = document.getElementById("misc" + i);
+    if (el) {
+      el.removeEventListener("input", recalcMisc);
+      el.removeEventListener("input", generateDMCharts);
+      el.addEventListener("input", recalcMisc);
+      el.addEventListener("input", generateDMCharts);
+    }
+  }
+}
+
+/* ======= FX calculator (fixed math) ======= */
+function convertGbpToJmd() {
+  const rateEl = document.getElementById("rateGbpToJmd");
+  const gbpEl = document.getElementById("amountGbp");
+  const jmdEl = document.getElementById("amountJmd");
+  const fxResult = document.getElementById("fxResult");
+  const rate = rateEl ? toNumber(rateEl.value) : 0;
+  const gbp = gbpEl ? toNumber(gbpEl.value) : 0;
+  const jmd = gbp * rate;
+  if (jmdEl) jmdEl.value = jmd.toFixed(2);
+  if (fxResult) fxResult.textContent = `${gbp.toFixed(2)} GBP = ${jmd.toFixed(2)} JMD`;
+}
+
+function convertJmdToGbp() {
+  const rateEl = document.getElementById("rateJmdToGbp");
+  const jmdEl = document.getElementById("amountJmd");
+  const gbpEl = document.getElementById("amountGbp");
+  const fxResult = document.getElementById("fxResult");
+  const rate = rateEl ? toNumber(rateEl.value) : 0;
+  const jmd = jmdEl ? toNumber(jmdEl.value) : 0;
+  // Correct formula: GBP = JMD / rate (guard rate != 0)
+  const gbp = rate === 0 ? 0 : jmd / rate;
+  if (gbpEl) gbpEl.value = gbp.toFixed(2);
+  if (fxResult) fxResult.textContent = `${jmd.toFixed(2)} JMD = ${gbp.toFixed(2)} GBP`;
+}
+
+/* ======= Email export ======= */
+function exportEmail() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+  if (!rows || rows.length === 0) {
+    alert("No financial entries found to email.");
+    return;
+  }
+
+  let emailText = "DM Corporate Financial Summary\n\n";
+  rows.forEach((r, i) => {
+    emailText += `Entry ${i + 1}\n`;
+    emailText += `Date: ${ (r.cells[0] && r.cells[0].querySelector("input")) ? r.cells[0].querySelector("input").value : "" }\n`;
+    emailText += `Actioned by: ${ (r.cells[1] && r.cells[1].querySelector("input")) ? r.cells[1].querySelector("input").value : "" }\n`;
+    emailText += `Task: ${ (r.cells[2] && r.cells[2].querySelector("input")) ? r.cells[2].querySelector("input").value : "" }\n`;
+    emailText += `Materials: ${ (r.cells[3] && r.cells[3].querySelector("input")) ? r.cells[3].querySelector("input").value : "0" } JMD\n`;
+    emailText += `Receipt #: ${ (r.cells[4] && r.cells[4].querySelector("input")) ? r.cells[4].querySelector("input").value : "" }\n`;
+    emailText += `Labour: ${ (r.cells[5] && r.cells[5].querySelector("input")) ? r.cells[5].querySelector("input").value : "0" } JMD\n`;
+    emailText += `Deposits: ${ (r.cells[6] && r.cells[6].querySelector("input")) ? r.cells[6].querySelector("input").value : "0" } JMD\n`;
+    emailText += `Outcome: ${ (r.cells[7] && r.cells[7].querySelector("input")) ? r.cells[7].querySelector("input").value : "" }\n`;
+    emailText += `Status: ${ (r.cells[8] && r.cells[8].querySelector("input")) ? r.cells[8].querySelector("input").value : "" }\n`;
+    emailText += `Notes: ${ (r.cells[9] && r.cells[9].querySelector("input")) ? r.cells[9].querySelector("input").value : "" }\n\n`;
+  });
+
+  const mailtoBody = encodeURIComponent(emailText);
+  const mailtoLink = `mailto:?subject=${encodeURIComponent("DM Financial Summary")}&body=${mailtoBody}`;
+  window.location.href = mailtoLink;
+}
+
+/* ======= CSV / Excel export ======= */
+function exportExcel() {
+  const table = document.getElementById("costsTable");
+  if (!table) { alert("No table found to export."); return; }
+  const rows = Array.from(table.querySelectorAll("tr"));
+  const csv = rows.map(row => {
+    const cells = Array.from(row.querySelectorAll("th, td"));
+    return cells.map(c => {
+      const input = c.querySelector("input");
+      const text = input ? (input.value || "") : (c.innerText || "");
+      return `"${String(text).replace(/"/g, '""')}"`;
+    }).join(",");
+  }).join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "DM_McKinley_Statement_of_Costs.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ======= Chart engine (placeholder safe) ======= */
+function generateDMCharts() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+  const dates = [], materials = [], labour = [], deposits = [];
+  rows.forEach(r => {
+    dates.push((r.cells[0] && r.cells[0].querySelector("input")) ? r.cells[0].querySelector("input").value : "");
+    materials.push(toNumber(r.cells[3] && r.cells[3].querySelector("input") ? r.cells[3].querySelector("input").value : 0));
+    labour.push(toNumber(r.cells[5] && r.cells[5].querySelector("input") ? r.cells[5].querySelector("input").value : 0));
+    deposits.push(toNumber(r.cells[6] && r.cells[6].querySelector("input") ? r.cells[6].querySelector("input").value : 0));
+  });
+
+  // If you have a chart library, update it here.
+  // This function intentionally does not throw if chart elements are missing.
+}
+
+/* ======= Expose globals for inline onclick handlers ======= */
+window.addCostRow = addCostRow;
+window.deleteRow = function(btn) { deleteRow(btn); };
+window.exportEmail = exportEmail;
+window.exportExcel = exportExcel;
+window.convertGbpToJmd = convertGbpToJmd;
+window.convertJmdToGbp = convertJmdToGbp;
+
+/* ======= DOMContentLoaded wiring ======= */
+document.addEventListener("DOMContentLoaded", function () {
+  wireExistingRows();
+  wireMisc();
+  recalcTotals();
+  recalcMisc();
+  generateDMCharts();
+});
+</script>
+<script>
+/* ======= Utility helpers ======= */
+function toNumber(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+/* ======= Totals / cost table logic ======= */
+function recalcTotals() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+  let m = 0, l = 0, d = 0;
+  rows.forEach(r => {
+    const matCell = r.cells[3] && r.cells[3].querySelector("input");
+    const labCell = r.cells[5] && r.cells[5].querySelector("input");
+    const depCell = r.cells[6] && r.cells[6].querySelector("input");
+    m += toNumber(matCell ? matCell.value : 0);
+    l += toNumber(labCell ? labCell.value : 0);
+    d += toNumber(depCell ? depCell.value : 0);
+  });
+
+  const totalMaterials = document.getElementById("totalMaterials");
+  const totalLabour = document.getElementById("totalLabour");
+  const totalDeposits = document.getElementById("totalDeposits");
+  if (totalMaterials) totalMaterials.textContent = m.toFixed(2);
+  if (totalLabour) totalLabour.textContent = l.toFixed(2);
+  if (totalDeposits) totalDeposits.textContent = d.toFixed(2);
+}
+
+/* ======= Add / delete rows ======= */
+function addCostRow() {
+  const tbody = document.querySelector("#costsTable tbody");
+  if (!tbody) return;
+
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="date"></td>
+    <td><input type="text" placeholder="Actioned by"></td>
+    <td><input type="text" placeholder="Task"></td>
+    <td><input type="number" value="0" step="0.01" placeholder="Materials"></td>
+    <td><input type="text" placeholder="Receipt #"></td>
+    <td><input type="number" value="0" step="0.01" placeholder="Labour"></td>
+    <td><input type="number" value="0" step="0.01" placeholder="Deposits"></td>
+    <td><input type="text" placeholder="Outcome"></td>
+    <td><input type="text" placeholder="Status"></td>
+    <td><input type="text" placeholder="Notes"></td>
+    <td><button class="deleteBtn" type="button">🗑</button></td>
+  `;
+  tbody.appendChild(tr);
+
+  tr.querySelectorAll("input").forEach(i => {
+    i.addEventListener("input", recalcTotals);
+    i.addEventListener("input", generateDMCharts);
+  });
+
+  const del = tr.querySelector(".deleteBtn");
+  if (del) del.addEventListener("click", () => {
+    tr.remove();
+    recalcTotals();
+    generateDMCharts();
+  });
+
+  recalcTotals();
+  generateDMCharts();
+}
+
+function deleteRow(btn) {
+  const tr = btn && btn.closest && btn.closest("tr");
+  if (tr) tr.remove();
+  recalcTotals();
+  generateDMCharts();
+}
+
+/* ======= Initial wiring for existing rows ======= */
+function wireExistingRows() {
+  const inputs = document.querySelectorAll("#costsTable tbody tr input");
+  inputs.forEach(i => {
+    i.removeEventListener("input", recalcTotals);
+    i.removeEventListener("input", generateDMCharts);
+    i.addEventListener("input", recalcTotals);
+    i.addEventListener("input", generateDMCharts);
+  });
+
+  document.querySelectorAll("#costsTable tbody .deleteBtn").forEach(btn => {
+    btn.removeEventListener("click", deleteRow);
+    btn.addEventListener("click", function () { deleteRow(this); });
+  });
+}
+
+/* ======= Misc totals ======= */
+function recalcMisc() {
+  let total = 0;
+  for (let i = 1; i <= 9; i++) {
+    const el = document.getElementById("misc" + i);
+    if (el) total += toNumber(el.value);
+  }
+  const out = document.getElementById("miscTotal");
+  if (out) out.textContent = total.toFixed(2);
+}
+
+function wireMisc() {
+  for (let i = 1; i <= 9; i++) {
+    const el = document.getElementById("misc" + i);
+    if (el) {
+      el.removeEventListener("input", recalcMisc);
+      el.removeEventListener("input", generateDMCharts);
+      el.addEventListener("input", recalcMisc);
+      el.addEventListener("input", generateDMCharts);
+    }
+  }
+}
+
+/* ======= FX calculator (fixed math) ======= */
+function convertGbpToJmd() {
+  const rateEl = document.getElementById("rateGbpToJmd");
+  const gbpEl = document.getElementById("amountGbp");
+  const jmdEl = document.getElementById("amountJmd");
+  const fxResult = document.getElementById("fxResult");
+  const rate = rateEl ? toNumber(rateEl.value) : 0;
+  const gbp = gbpEl ? toNumber(gbpEl.value) : 0;
+  const jmd = gbp * rate;
+  if (jmdEl) jmdEl.value = jmd.toFixed(2);
+  if (fxResult) fxResult.textContent = `${gbp.toFixed(2)} GBP = ${jmd.toFixed(2)} JMD`;
+}
+
+function convertJmdToGbp() {
+  const rateEl = document.getElementById("rateJmdToGbp");
+  const jmdEl = document.getElementById("amountJmd");
+  const gbpEl = document.getElementById("amountGbp");
+  const fxResult = document.getElementById("fxResult");
+  const rate = rateEl ? toNumber(rateEl.value) : 0;
+  const jmd = jmdEl ? toNumber(jmdEl.value) : 0;
+  const gbp = rate === 0 ? 0 : jmd / rate;
+  if (gbpEl) gbpEl.value = gbp.toFixed(2);
+  if (fxResult) fxResult.textContent = `${jmd.toFixed(2)} JMD = ${gbp.toFixed(2)} GBP`;
+}
+
+/* ======= Email export ======= */
+function exportEmail() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+  if (!rows || rows.length === 0) {
+    alert("No financial entries found to email.");
+    return;
+  }
+
+  let emailText = "DM Corporate Financial Summary\n\n";
+  rows.forEach((r, i) => {
+    emailText += `Entry ${i + 1}\n`;
+    emailText += `Date: ${ (r.cells[0] && r.cells[0].querySelector("input")) ? r.cells[0].querySelector("input").value : "" }\n`;
+    emailText += `Actioned by: ${ (r.cells[1] && r.cells[1].querySelector("input")) ? r.cells[1].querySelector("input").value : "" }\n`;
+    emailText += `Task: ${ (r.cells[2] && r.cells[2].querySelector("input")) ? r.cells[2].querySelector("input").value : "" }\n`;
+    emailText += `Materials: ${ (r.cells[3] && r.cells[3].querySelector("input")) ? r.cells[3].querySelector("input").value : "0" } JMD\n`;
+    emailText += `Receipt #: ${ (r.cells[4] && r.cells[4].querySelector("input")) ? r.cells[4].querySelector("input").value : "" }\n`;
+    emailText += `Labour: ${ (r.cells[5] && r.cells[5].querySelector("input")) ? r.cells[5].querySelector("input").value : "0" } JMD\n`;
+    emailText += `Deposits: ${ (r.cells[6] && r.cells[6].querySelector("input")) ? r.cells[6].querySelector("input").value : "0" } JMD\n`;
+    emailText += `Outcome: ${ (r.cells[7] && r.cells[7].querySelector("input")) ? r.cells[7].querySelector("input").value : "" }\n`;
+    emailText += `Status: ${ (r.cells[8] && r.cells[8].querySelector("input")) ? r.cells[8].querySelector("input").value : "" }\n`;
+    emailText += `Notes: ${ (r.cells[9] && r.cells[9].querySelector("input")) ? r.cells[9].querySelector("input").value : "" }\n\n`;
+  });
+
+  const mailtoBody = encodeURIComponent(emailText);
+  const mailtoLink = `mailto:?subject=${encodeURIComponent("DM Financial Summary")}&body=${mailtoBody}`;
+  window.location.href = mailtoLink;
+}
+
+/* ======= CSV / Excel export ======= */
+function exportExcel() {
+  const table = document.getElementById("costsTable");
+  if (!table) { alert("No table found to export."); return; }
+  const rows = Array.from(table.querySelectorAll("tr"));
+  const csv = rows.map(row => {
+    const cells = Array.from(row.querySelectorAll("th, td"));
+    return cells.map(c => {
+      const input = c.querySelector("input");
+      const text = input ? (input.value || "") : (c.innerText || "");
+      return `"${String(text).replace(/"/g, '""')}"`;
+    }).join(",");
+  }).join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "DM_McKinley_Statement_of_Costs.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ======= Chart engine (placeholder safe) ======= */
+function generateDMCharts() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+  const dates = [], materials = [], labour = [], deposits = [];
+  rows.forEach(r => {
+    dates.push((r.cells[0] && r.cells[0].querySelector("input")) ? r.cells[0].querySelector("input").value : "");
+    materials.push(toNumber(r.cells[3] && r.cells[3].querySelector("input") ? r.cells[3].querySelector("input").value : 0));
+    labour.push(toNumber(r.cells[5] && r.cells[5].querySelector("input") ? r.cells[5].querySelector("input").value : 0));
+    deposits.push(toNumber(r.cells[6] && r.cells[6].querySelector("input") ? r.cells[6].querySelector("input").value : 0));
+  });
+
+  // If you add a chart library (Chart.js, etc.), update charts here.
+}
+
+/* ======= Expose globals for inline onclick handlers ======= */
+window.addCostRow = addCostRow;
+window.deleteRow = function(btn) { deleteRow(btn); };
+window.exportEmail = exportEmail;
+window.exportExcel = exportExcel;
+window.convertGbpToJmd = convertGbpToJmd;
+window.convertJmdToGbp = convertJmdToGbp;
+
+/* ======= DOMContentLoaded wiring ======= */
+document.addEventListener("DOMContentLoaded", function () {
+  wireExistingRows();
+  wireMisc();
+  recalcTotals();
+  recalcMisc();
+  generateDMCharts();
+});
+</script>
+
+<body>
+
+<div id="dmHeader">
+  DM Corporate Console — McKinley Drive Property Oversight
+
+  <div style="position:absolute; right:30px; bottom:10px; display:flex; gap:10px;">
+    <button onclick="exportEmail()" style="background:#c00000;">📧 Email Summary</button>
+    <button onclick="exportExcel()" style="background:#c00000;">📊 Export Excel</button>
+  </div>
+</div>
+
+<!-- Statement of Costs -->
+<div class="dmCard">
+  <h2>Statement of Costs 💵</h2>
+
+  <div class="flex">
+    <div>
+      <label>Default Currency</label>
+      <select id="defaultCurrency">
+        <option value="JMD">JMD</option>
+        <option value="GBP">GBP</option>
+      </select>
+    </div>
+  </div>
+
+  <table id="costsTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Actioned by</th>
+        <th>Task</th>
+        <th>Materials (JMD)</th>
+        <th>Receipt #</th>
+        <th>Labour (JMD)</th>
+        <th>Deposits (JMD)</th>
+        <th>Outcome</th>
+        <th>Status</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="date" value="2021-11-16"></td>
+        <td><input type="text" value="Sharon/Halcy-Ann/Hopieann"></td>
+        <td><input type="text" value="Payment of Energy Bill"></td>
+        <td><input type="number" value="16000"></td>
+        <td><input type="text" value="29949503216000-1538"></td>
+        <td><input type="number" value="0"></td>
+        <td><input type="number" value="0"></td>
+        <td><input type="text" value="Completed"></td>
+        <td><input type="text" value="Completed"></td>
+        <td><input type="text" value="JPS A/C#: 135758-137141"></td>
+        <td><button class="deleteBtn" onclick="deleteRow(this)">🗑</button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <button onclick="addCostRow()">➕ Add Financial Entry</button>
+
+  <div class="totals">
+    Total Materials: <span id="totalMaterials">0</span><br>
+    Total Labour: <span id="totalLabour">0</span><br>
+    Total Deposits: <span id="totalDeposits">0</span>
+  </div>
+</div>
+
+<!-- Misc Totals -->
+<div class="dmCard">
+  <h2>Miscellaneous Totals</h2>
+
+  <div class="flex">
+    <div><label>Value 1</label><input id="misc1" value="1150"></div>
+    <div><label>Value 2</label><input id="misc2" value="1566.6"></div>
+    <div><label>Value 3</label><input id="misc3" value="770"></div>
+    <div><label>Value 4</label><input id="misc4" value="7391.3"></div>
+    <div><label>Value 5</label><input id="misc5" value="540"></div>
+    <div><label>Value 6</label><input id="misc6" value="228"></div>
+    <div><label>Value 7</label><input id="misc7" value="725"></div>
+    <div><label>Value 8</label><input id="misc8" value="749.96"></div>
+    <div><label>Value 9</label><input id="misc9" value="1472"></div>
+  </div>
+
+  <div class="totals">
+    Misc Total: <span id="miscTotal">0</span>
+  </div>
+</div>
+
+<!-- FX Calculator -->
+<div class="dmCard">
+  <h2>💰 Exchange Rate & Bureaux De Change Calculator</h2>
+
+  <div class="flex">
+    <div>
+      <label>GBP → JMD rate</label>
+      <input id="rateGbpToJmd" value="195">
+    </div>
+    <div>
+      <label>JMD → GBP rate</label>
+      <input id="rateJmdToGbp" value="0.00513">
+    </div>
+  </div>
+
+  <h3>Bureaux De Change Calc</h3>
+
+  <div class="flex">
+    <div>
+      <label>Amount in GBP</label>
+      <input id="amountGbp">
+    </div>
+    <div>
+      <label>Amount in JMD</label>
+      <input id="amountJmd">
+    </div>
+  </div>
+
+  <button onclick="convertGbpToJmd()">Convert GBP → JMD</button>
+  <button onclick="convertJmdToGbp()">Convert JMD → GBP</button>
+
+  <div class="totals">
+    Result: <span id="fxResult">—</span>
+  </div>
+</div>
+
+<!-- DM Charts -->
+<div class="dmCard">
+  <h2>📊 DM Auto‑Generated Charts</h2>
+
+  <canvas id="materialsChart" height="120"></canvas>
+  <br>
+  <canvas id="labourChart" height="120"></canvas>
+  <br>
+  <canvas id="depositChart" height="120"></canvas>
+  <br>
+  <canvas id="miscChart" height="120"></canvas>
+</div>
+
+<script>
+  // Add a new financial entry row to a table with id="costsTable"
+  function addCostRow() {
+    const tbody = document.querySelector('#costsTable tbody');
+    if (!tbody) {
+      // fallback: create a simple container row if table not present
+      const container = document.querySelector('#entries') || document.body;
+      const row = document.createElement('div');
+      row.className = 'cost-row';
+      row.innerHTML = `
+        <input type="text" name="description" placeholder="Description" />
+        <input type="number" name="amount" placeholder="Amount" step="0.01" />
+        <button type="button" class="remove-row">Remove</button>
+      `;
+      container.appendChild(row);
+      row.querySelector('.remove-row').addEventListener('click', () => row.remove());
+      row.querySelector('input[name="description"]').focus();
+      return;
+    }
+
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+      <td><input type="text" name="description" placeholder="Description" /></td>
+      <td><input type="number" name="amount" placeholder="Amount" step="0.01" /></td>
+      <td><button type="button" class="remove-row">Remove</button></td>
+    `;
+    tbody.appendChild(newRow);
+
+    const removeBtn = newRow.querySelector('.remove-row');
+    if (removeBtn) removeBtn.addEventListener('click', () => newRow.remove());
+
+    const firstInput = newRow.querySelector('input[name="description"]');
+    if (firstInput) firstInput.focus();
+  }
+
+  // Build an email body from the table rows and open the user's mail client
+  function exportEmail() {
+    const rows = document.querySelectorAll('#costsTable tbody tr');
+    if (!rows || rows.length === 0) {
+      alert('No financial entries found to email.');
+      return;
+    }
+
+    let emailText = 'DM Corporate Financial Summary\n\n';
+    // Build header based on table columns (adjust if your table has different headers)
+    const headers = Array.from(document.querySelectorAll('#costsTable thead th')).map(h => h.textContent.trim());
+    if (headers.length) {
+      emailText += headers.join('\t') + '\n';
+    } else {
+      emailText += 'Description\tAmount\n';
+    }
+    emailText += '--------------------------------\n';
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      const values = Array.from(cells).map(td => {
+        const input = td.querySelector('input, select, textarea');
+        return input ? input.value.trim() : td.textContent.trim();
+      });
+      emailText += values.join('\t') + '\n';
+    });
+
+    // Encode and open mail client (subject can be adjusted)
+    const subject = encodeURIComponent('DM Corporate Financial Summary');
+    const body = encodeURIComponent(emailText);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+<script>
+function exportExcel() {
+  const table = document.getElementById('costsTable');
+  if (!table) {
+    alert('No table found to export.');
+    return;
+
+  // Export table to CSV and trigger download (works in-browser)
+  function exportExcel() {
+    const rows = document.querySelectorAll('#costsTable tbody tr');
+    if (!rows || rows.length === 0) {
+      alert('No financial entries found to export.');
+      return;
+    }
+
+    // Build CSV content
+    const csv = [];
+    const headers = Array.from(document.querySelectorAll('#costsTable thead th')).map(h => `"${h.textContent.trim().replace(/"/g, '""')}"`);
+    if (headers.length) csv.push(headers.join(','));
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      const values = Array.from(cells).map(td => {
+        const input = td.querySelector('input, select, textarea');
+        const text = input ? input.value : td.textContent;
+        return `"${String(text).trim().replace(/"/g, '""')}"`;
+      });
+      csv.push(values.join(','));
+    });
+
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dm-corporate-financials.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Ensure functions are available globally for inline onclick handlers
+  window.addCostRow = addCostRow;
+  window.exportEmail = exportEmail;
+  window.exportExcel = exportExcel;
+
+  // Optional: attach listeners if you prefer not to use inline onclick attributes
+  document.addEventListener('DOMContentLoaded', function () {
+    const addBtn = document.querySelector('#add-entry-btn');
+    if (addBtn) addBtn.addEventListener('click', addCostRow);
+
+    const emailBtn = document.querySelector('#email-export-btn');
+    if (emailBtn) emailBtn.addEventListener('click', exportEmail);
+
+    const excelBtn = document.querySelector('#excel-export-btn');
+    if (excelBtn) excelBtn.addEventListener('click', exportExcel);
+  });
+</script>
+
+
+  
