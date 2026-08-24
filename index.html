@@ -463,3 +463,26 @@ function generateDMCharts() {
     pointBackgroundColor: "#d9d9d9",
     pointBorderColor: "#8b0000",
     tension: 0.3
+      <script>
+  // Paste your functions here (replace the example bodies)
+  function addCostRow() {
+    // your add row code
+  }
+  function exportEmail() {
+    // your email export code
+  }
+  function exportExcel() {
+    // your excel export code
+  }
+
+  // Ensure functions are global for inline onclick handlers
+  window.addCostRow = addCostRow;
+  window.exportEmail = exportEmail;
+  window.exportExcel = exportExcel;
+
+  // If you attach listeners instead of inline onclick, wait for DOM
+  document.addEventListener('DOMContentLoaded', function() {
+    // attach event listeners here if needed
+  });
+</script>
+
