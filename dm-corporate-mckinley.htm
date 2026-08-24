@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DM Corporate Console — McKinley Drive Property</title>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+  --dm-crimson: #8b0000;
+  --dm-crimson-light: #b30000;
+  --dm-chrome: #d9d9d9;
+  --dm-dark: #1a1a1a;
+  --dm-glass: rgba(255,255,255,0.08);
+  --dm-text: #f2f2f2;
+  --dm-accent: #c0c0c0;
+  --dm-shadow: rgba(0,0,0,0.45);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(180deg, #0f0f0f, #1c1c1c);
+  font-family: "Segoe UI", Inter, sans-serif;
+  color: var(--dm-text);
+}
+
+/* DM Header */
+#dmHeader {
+  background: linear-gradient(90deg, var(--dm-crimson), var(--dm-crimson-light));
+  padding: 22px 30px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: white;
+  border-bottom: 3px solid var(--dm-chrome);
+  position: relative;
+}
+
+#dmHeader::after {
+  content: "DM";
+  position: absolute;
+  right: 30px;
+  top: 10px;
+  font-size: 4rem;
+  font-weight: 900;
+  opacity: 0.15;
+  color: var(--dm-chrome);
+}
+
+/* DM Cards */
+.dmCard {
+  background: var(--dm-glass);
+  border: 1px solid var(--dm-accent);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 25px;
+  box-shadow: 0 4px 12px var(--dm-shadow);
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.dmCard::after {
+  content: "DM";
+  position: absolute;
+  bottom: 10px;
+  right: 20px;
+  font-size: 2.8rem;
+  font-weight: 900;
+  opacity: 0.08;
+  color: var(--dm-chrome);
+}
+
+/* Titles */
+.dmCard h2 {
+  margin-top: 0;
+  color: var(--dm-chrome);
+  border-left: 6px solid var(--dm-crimson);
+  padding-left: 12px;
+  font-size: 1.4rem;
+}
+
+/* Inputs */
+input, select {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid var(--dm-accent);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--dm-text);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--dm-crimson-light);
+  box-shadow: 0 0 6px var(--dm-crimson-light);
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+th {
+  background: rgba(255,255,255,0.12);
+  border-bottom: 2px solid var(--dm-crimson);
+  padding: 8px;
+  color: var(--dm-chrome);
+}
+
+td {
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  padding: 6px;
+}
+
+/* Buttons */
+button {
+  background: var(--dm-crimson);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: var(--dm-crimson-light);
+}
+
+.deleteBtn {
+  background: #444;
+}
+
+.deleteBtn:hover {
+  background: #666;
+}
+
+/* Totals */
+.totals {
+  margin-top: 12px;
+  font-weight: 700;
+  color: var(--dm-chrome);
+  font-size: 1.1rem;
+}
+
+/* Flex */
+.flex {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.flex > div {
+  flex: 1 1 200px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="dmHeader">
+  DM Corporate Console — McKinley Drive Property Oversight
+
+  <div style="position:absolute; right:30px; bottom:10px; display:flex; gap:10px;">
+    <button onclick="exportEmail()" style="background:#c00000;">📧 Email Summary</button>
+    <button onclick="exportExcel()" style="background:#c00000;">📊 Export Excel</button>
+  </div>
+</div>
+
+<!-- Statement of Costs -->
+<div class="dmCard">
+  <h2>Statement of Costs 💵</h2>
+
+  <div class="flex">
+    <div>
+      <label>Default Currency</label>
+      <select id="defaultCurrency">
+        <option value="JMD">JMD</option>
+        <option value="GBP">GBP</option>
+      </select>
+    </div>
+  </div>
+
+  <table id="costsTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Actioned by</th>
+        <th>Task</th>
+        <th>Materials (JMD)</th>
+        <th>Receipt #</th>
+        <th>Labour (JMD)</th>
+        <th>Deposits (JMD)</th>
+        <th>Outcome</th>
+        <th>Status</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="date" value="2021-11-16"></td>
+        <td><input type="text" value="Sharon/Halcy-Ann/Hopieann"></td>
+        <td><input type="text" value="Payment of Energy Bill"></td>
+        <td><input type="number" value="16000"></td>
+        <td><input type="text" value="29949503216000-1538"></td>
+        <td><input type="number" value="0"></td>
+        <td><input type="number" value="0"></td>
+        <td><input type="text" value="Completed"></td>
+        <td><input type="text" value="Completed"></td>
+        <td><input type="text" value="JPS A/C#: 135758-137141"></td>
+        <td><button class="deleteBtn" onclick="deleteRow(this)">🗑</button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <button onclick="addCostRow()">➕ Add Financial Entry</button>
+
+  <div class="totals">
+    Total Materials: <span id="totalMaterials">0</span><br>
+    Total Labour: <span id="totalLabour">0</span><br>
+    Total Deposits: <span id="totalDeposits">0</span>
+  </div>
+</div>
+
+<!-- Misc Totals -->
+<div class="dmCard">
+  <h2>Miscellaneous Totals</h2>
+
+  <div class="flex">
+    <div><label>Value 1</label><input id="misc1" value="1150"></div>
+    <div><label>Value 2</label><input id="misc2" value="1566.6"></div>
+    <div><label>Value 3</label><input id="misc3" value="770"></div>
+    <div><label>Value 4</label><input id="misc4" value="7391.3"></div>
+    <div><label>Value 5</label><input id="misc5" value="540"></div>
+    <div><label>Value 6</label><input id="misc6" value="228"></div>
+    <div><label>Value 7</label><input id="misc7" value="725"></div>
+    <div><label>Value 8</label><input id="misc8" value="749.96"></div>
+    <div><label>Value 9</label><input id="misc9" value="1472"></div>
+  </div>
+
+  <div class="totals">
+    Misc Total: <span id="miscTotal">0</span>
+  </div>
+</div>
+
+<!-- FX Calculator -->
+<div class="dmCard">
+  <h2>💰 Exchange Rate & Bureaux De Change Calculator</h2>
+
+  <div class="flex">
+    <div>
+      <label>GBP → JMD rate</label>
+      <input id="rateGbpToJmd" value="195">
+    </div>
+    <div>
+      <label>JMD → GBP rate</label>
+      <input id="rateJmdToGbp" value="0.00513">
+    </div>
+  </div>
+
+  <h3>Bureaux De Change Calc</h3>
+
+  <div class="flex">
+    <div>
+      <label>Amount in GBP</label>
+      <input id="amountGbp">
+    </div>
+    <div>
+      <label>Amount in JMD</label>
+      <input id="amountJmd">
+    </div>
+  </div>
+
+  <button onclick="convertGbpToJmd()">Convert GBP → JMD</button>
+  <button onclick="convertJmdToGbp()">Convert JMD → GBP</button>
+
+  <div class="totals">
+    Result: <span id="fxResult">—</span>
+  </div>
+</div>
+
+<!-- DM Charts -->
+<div class="dmCard">
+  <h2>📊 DM Auto‑Generated Charts</h2>
+
+  <canvas id="materialsChart" height="120"></canvas>
+  <br>
+  <canvas id="labourChart" height="120"></canvas>
+  <br>
+  <canvas id="depositChart" height="120"></canvas>
+  <br>
+  <canvas id="miscChart" height="120"></canvas>
+</div>
+
+<script>
+/* COST TABLE LOGIC */
+function recalcTotals() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+  let m = 0, l = 0, d = 0;
+
+  rows.forEach(r => {
+    m += parseFloat(r.cells[3].querySelector("input").value || 0);
+    l += parseFloat(r.cells[5].querySelector("input").value || 0);
+    d += parseFloat(r.cells[6].querySelector("input").value || 0);
+  });
+
+  document.getElementById("totalMaterials").textContent = m.toFixed(2);
+  document.getElementById("totalLabour").textContent = l.toFixed(2);
+  document.getElementById("totalDeposits").textContent = d.toFixed(2);
+}
+
+function addCostRow() {
+  const tbody = document.querySelector("#costsTable tbody");
+  const tr = document.createElement("tr");
+
+  tr.innerHTML = `
+    <td><input type="date"></td>
+    <td><input type="text"></td>
+    <td><input type="text"></td>
+    <td><input type="number" value="0"></td>
+    <td><input type="text"></td>
+    <td><input type="number" value="0"></td>
+    <td><input type="number" value="0"></td>
+    <td><input type="text"></td>
+    <td><input type="text"></td>
+    <td><input type="text"></td>
+    <td><button class="deleteBtn" onclick="deleteRow(this)">🗑</button></td>
+  `;
+
+  tbody.appendChild(tr);
+  tr.querySelectorAll("input").forEach(i => i.addEventListener("input", recalcTotals));
+  tr.querySelectorAll("input").forEach(i => i.addEventListener("input", generateDMCharts));
+  recalcTotals();
+  generateDMCharts();
+}
+
+function deleteRow(btn) {
+  btn.closest("tr").remove();
+  recalcTotals();
+  generateDMCharts();
+}
+
+document.querySelectorAll("#costsTable tbody tr input")
+  .forEach(i => i.addEventListener("input", recalcTotals));
+
+document.querySelectorAll("#costsTable tbody tr input")
+  .forEach(i => i.addEventListener("input", generateDMCharts));
+
+recalcTotals();
+
+/* MISC TOTALS */
+function recalcMisc() {
+  let total = 0;
+  for (let i = 1; i <= 9; i++) {
+    total += parseFloat(document.getElementById("misc" + i).value || 0);
+  }
+  document.getElementById("miscTotal").textContent = total.toFixed(2);
+}
+
+for (let i = 1; i <= 9; i++) {
+  document.getElementById("misc" + i).addEventListener("input", recalcMisc);
+  document.getElementById("misc" + i).addEventListener("input", generateDMCharts);
+}
+
+recalcMisc();
+
+/* FX CALCULATOR */
+function convertGbpToJmd() {
+  const rate = parseFloat(rateGbpToJmd.value || 0);
+  const gbp = parseFloat(amountGbp.value || 0);
+  const jmd = gbp * rate;
+  amountJmd.value = jmd.toFixed(2);
+  fxResult.textContent = `${gbp.toFixed(2)} GBP = ${jmd.toFixed(2)} JMD`;
+}
+
+function convertJmdToGbp() {
+  const rate = parseFloat(rateJmdToGbp.value || 0);
+  const jmd = parseFloat(amountJmd.value || 0);
+  const gbp = jmd * rate;
+  amountGbp.value = gbp.toFixed(2);
+  fxResult.textContent = `${jmd.toFixed(2)} JMD = ${gbp.toFixed(2)} GBP`;
+}
+
+/* EMAIL SUMMARY EXPORT */
+function exportEmail() {
+  let rows = document.querySelectorAll("#costsTable tbody tr");
+  let emailText = "DM Corporate Financial Summary\n\n";
+
+  rows.forEach((r, i) => {
+    emailText += `Entry ${i+1}\n`;
+    emailText += `Date: ${r.cells[0].querySelector("input").value}\n`;
+    emailText += `Actioned by: ${r.cells[1].querySelector("input").value}\n`;
+    emailText += `Task: ${r.cells[2].querySelector("input").value}\n`;
+    emailText += `Materials: ${r.cells[3].querySelector("input").value} JMD\n`;
+    emailText += `Receipt #: ${r.cells[4].querySelector("input").value}\n`;
+    emailText += `Labour: ${r.cells[5].querySelector("input").value} JMD\n`;
+    emailText += `Deposits: ${r.cells[6].querySelector("input").value} JMD\n`;
+    emailText += `Outcome: ${r.cells[7].querySelector("input").value}\n`;
+    emailText += `Status: ${r.cells[8].querySelector("input").value}\n`;
+    emailText += `Notes: ${r.cells[9].querySelector("input").value}\n\n`;
+  });
+
+  let mailtoBody = encodeURIComponent(emailText);
+  let mailtoLink = `mailto:?subject=DM Financial Summary&body=${mailtoBody}`;
+  window.location.href = mailtoLink;
+}
+
+/* EXCEL/CSV EXPORT */
+function exportExcel() {
+  let table = document.getElementById("costsTable");
+  let rows = Array.from(table.querySelectorAll("tr"));
+
+  let csv = rows.map(row => {
+    let cells = Array.from(row.querySelectorAll("th, td"));
+    return cells.map(c => {
+      let input = c.querySelector("input");
+      return input ? `"${(input.value || "").replace(/"/g, '""')}"` : `"${(c.innerText || "").replace(/"/g, '""')}"`;
+    }).join(",");
+  }).join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "DM_McKinley_Statement_of_Costs.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* DM CORPORATE CHART ENGINE */
+function generateDMCharts() {
+  const rows = document.querySelectorAll("#costsTable tbody tr");
+
+  let dates = [];
+  let materials = [];
+  let labour = [];
+  let deposits = [];
+
+  rows.forEach(r => {
+    dates.push(r.cells[0].querySelector("input").value || "");
+    materials.push(parseFloat(r.cells[3].querySelector("input").value || 0));
+    labour.push(parseFloat(r.cells[5].querySelector("input").value || 0));
+    deposits.push(parseFloat(r.cells[6].querySelector("input").value || 0));
+  });
+
+  const miscValues = [];
+  for (let i = 1; i <= 9; i++) {
+    miscValues.push(parseFloat(document.getElementById("misc" + i).value || 0));
+  }
+
+  const dmStyle = {
+    borderColor: "#b30000",
+    backgroundColor: "rgba(179,0,0,0.25)",
+    pointBackgroundColor: "#d9d9d9",
+    pointBorderColor: "#8b0000",
+    tension: 0.3
